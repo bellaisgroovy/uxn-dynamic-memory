@@ -35,6 +35,12 @@ BRK
 @set_bit ( idx -- )
 !todo
 
+@mask_set ( idx16 ) ( returns mask with bit idx spaces left as 1 and the rest 0 )
+    SWP POP ( makes idx byte instead of short ) ( idx8 )
+    #40 SFT ( moves low nibble of idx to high nibble ) ( idx8<<4 )
+    #01 SWP SFT ( moves 1 in 0000 0001 left by value of idx ) ( 1<<idx8<<4 )
+    JMP2r
+
 @clear_bit ( idx -- )
 !todo
 
