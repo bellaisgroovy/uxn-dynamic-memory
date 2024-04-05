@@ -303,7 +303,7 @@ as a decimal number of 5 digits )
     INC2 SWP2 #0001 SUB2 DUP2 ( ;str+3 size-1 size-1 )
     ,&loop JMP
     &exit
-    POP2 POP2 POP2
+    POP2 POP2
     JMP2r
 
 ( example strings )
