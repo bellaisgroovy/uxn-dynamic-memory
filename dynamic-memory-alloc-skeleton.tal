@@ -33,15 +33,43 @@ BRK
 !todo
 
 @set_bit ( idx -- )
-!todo
+    ( byte_idx = idx >> 3 )
+    DUP2 ( idx, idx )
+    #03 SFT2 ( idx, byte_idx )
+
+    ( bit_idx = 7 - {idx - {byte_idx<<3}} )
+    DUP2 ( idx, byte_idx, byte_idx )
+    #30 SFT ( idx, byte_idx, byte_idx>><<3 )
+    ROT2 ( byte_idx, byte_idx>><<3, idx )
+    ADD2 ( byte_idx, idx+byte_idx>><<3 )
+    #0007 SWP2 ( byte_idx, 0070, idx+byte_idx>><<3 )
+    SUB2 ( byte_idx, bit_idx )
+
+    ( byte = bitmap[byte_idx] )
+    SWP2 ( bit_idx, byte_idx )
+    ;bitmap ( bit_idx, byte_idx, &bitmap )
+    ADD2 ( bit_idx, &bitmap[byte_idx] )
+    
+    ( bitmap[byte_idx] = byte | mask_set{bit_idx} )
+    DUP2 ROT2 SWP2 (  &bitmap[byte_idx], bit_idx, &bitmap[byte_idx] )
+    LDA (  &bitmap[byte_idx], bit_idx, *bitmap[byte_idx] )
+    ROT ROT ( &bitmap[byte_idx], *bitmap[byte_idx], bit_idx )
+    mask_set ( &bitmap[byte_idx], *bitmap[byte_idx], mask )
+    ORA ( &bitmap[byte_idx], byteMasked )
+    ROT ROT ( byteMasked, &bitmap[byte_idx] )
+    STA ( -- )
+    JMP2r
 
 @mask_set ( idx16 ) ( returns mask with bit idx spaces left as 1 and the rest 0 )
-    SWP POP ( makes idx byte instead of short ) ( idx8 )
+    SWP POP ( makes idx byte instead of short ) ( idx8 ) ( is this def right? )
     #40 SFT ( moves low nibble of idx to high nibble ) ( idx8<<4 )
     #01 SWP SFT ( moves 1 in 0000 0001 left by value of idx ) ( 1<<idx8<<4 )
     JMP2r
 
 @clear_bit ( idx -- )
+!todo
+
+@mask_clear
 !todo
 
 ( allocation size is in pages )
