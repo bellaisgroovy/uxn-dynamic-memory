@@ -29,8 +29,38 @@ BRK
     SWP2 #f000 SUB2 PAGE_SZ DIV2
     ;free_alloc_sz_at_idx JMP2
 
-@get_bit ( idx -- bit )
-!todo
+@get_bit ( idx -- bit ) ( wait can i just do ;bitmap ADD2 LDA?? )
+    ( get idx % 8 )
+    DUP2 DUP2 ( idx, idx, idx )
+    #03 SFT2 #30 SFT2 ( idx, idx, idx rounded to the nearest 8 )
+    SUB2 ( idx, idx%8 )
+
+    ( take away index of the bit from 7 )
+    #0007 SWP2 SUB2 ( idx, bit_idx )
+    SWP2 ( bit_idx, idx )
+
+    ( if index is too big exit )
+    #03 SFT2 ( bit_idx, byte_idx )
+    N_PAGES #0001 SUB2 ( bit_idx, byte_idx, n_pages-1 )
+    GTH2k ( bit_idx, byte_idx, n_pages-1, byte_idx>n_pages-1 )
+    ,&invalid JCN POP2 ( bit_idx, byte_idx )
+
+    ( get bitmap[byte_idx] )
+    ;bitmap ADD2 LDA ( bit_idx, *bitmap[byte_idx] )
+
+    ( get value of bit at idx finally )
+    ( bit_idx, byte )
+    ROT ( bit_idx_low, byte, bit_idx_high )
+    POP ( bit_idx_low, byte )
+    SWP ( byte, bit_idx_low )
+    SFT ( byte>>bit_idx )
+    #01 AND ( bit )
+    JMP2r
+    
+    &invalid
+        { 0016 "Outside 20 "of 20 "page 20 "range 0a } STH2r print-str
+        BRK
+
 
 @set_bit ( idx -- )
     ( byte_idx = idx >> 3 )
@@ -87,8 +117,8 @@ BRK
 @todo { 0005 "TODO 0a } STH2r print-str JMP2r
 
 @print-bit #30 ADD #18 DEO JMP2r
-@nl #0a18 DEO JMP2r
-@ws #2018 DEO JMP2r
+@nl #0a18 DEO JMP2r ( print new line )
+@ws #2018 DEO JMP2r ( print white space )
 
 @print8 ( b -: )
     ( DUP ) ( b b )
