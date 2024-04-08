@@ -28,18 +28,19 @@ def free(ptr,n_bytes) :
     idx = (ptr-VMEM_START)/PAGE_SZ
     free_alloc_sz_at_idx(idx, n_bytes)
 
-def get_bit(idx) :
-    byte_idx = idx >> 3
-    bit_idx = 7 - (idx - (byte_idx<<3))
-    if byte_idx > N_PAGES-1:
+# returns 1 if bit at idx is full, returns 0 if bit is empty
+def get_bit(idx) : # idx is the index of the bit we want in memory
+    byte_idx = idx >> 3 # byte idx is the index of the byte we want in memory (when memory is split into bytes) (idx/8)
+    bit_idx = 7 - (idx - (byte_idx<<3)) # 7 - (idx%8)
+    if byte_idx > N_PAGES-1: # exit if out of range
         print("Outside of page range: ", byte_idx)
         exit(0)
-    byte = bitmap[byte_idx]
+    byte = bitmap[byte_idx] # load in value of byte we want
     # if byte is None:
     #     print("Invalid access:", byte_idx)
     #     exit(0)
-    bit = (byte >> bit_idx) & 0x01
-    return bit
+    bit = (byte >> bit_idx) & 0x01 # move bit we want to 1st position and trim everything else
+    return bit # return value of that bit
 
 def set_bit(idx) :
     byte_idx = idx >> 3
