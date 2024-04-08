@@ -99,8 +99,18 @@ BRK
 @clear_bit ( idx -- )
 !todo
 
-@mask_clear
-!todo
+@mask_clear ( bit_idx -- 0xFF ^ {1 << bit_idx} )
+    ( shift 1 to the left by bit_idx )
+    SWP POP ( make bit_idx a byte )
+    #01 SWP ( 01, bit_idx )
+    #40 SFT ( move content of bit_idx to left nibble ) ( 01, bit_idx00 )
+    SFT ( 1 << bit_idx )
+
+    ( flip all the bits )
+    #ff
+    EOR
+    
+    JMP2r
 
 ( allocation size is in pages )
 @alloc_sz_is_free_at_idx ( idx alloc_sz -- 00 or 01 )
