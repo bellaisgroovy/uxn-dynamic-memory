@@ -97,7 +97,33 @@ BRK
     JMP2r
 
 @clear_bit ( idx -- )
-!todo
+    ( get idx % 8 )
+    DUP2 DUP2 ( idx, idx, idx )
+    #03 SFT2 #30 SFT2 ( idx, idx, idx rounded to the nearest 8 )
+    SUB2 ( idx, idx%8 )
+
+    ( take away index of the bit from 7 )
+    #0007 SWP2 SUB2 ( idx, bit_idx )
+
+    ( get mask )
+    mask_clear ( idx, mask )
+    ROT ROT ( mask, idx )
+
+    ( get byte )
+    #03 SFT2 ( mask, byte_idx )
+    ;bitmap ADD2 ( mask, &bitmap[byte_idx] )
+    LDAk ( mask, &bitmap[byte_idx], byte )
+    ROT ROT ( mask, byte, &bitmap[byte_idx] )
+    SWP2 ( &bitmap[byte_idx], mask, byte )
+
+    ( apply mask )
+    AND (&bitmap[byte_idx], mask&byte )
+
+    ( store result )
+    ROT ROT ( mask&byte, &bitmap[byte_idx] )
+    STA ( -- )
+
+    JMP2r
 
 @mask_clear ( bit_idx -- 0xFF ^ {1 << bit_idx} )
     ( shift 1 to the left by bit_idx )
