@@ -29,7 +29,7 @@ def free(ptr,n_bytes) :
     free_alloc_sz_at_idx(idx, n_bytes)
 
 # returns 1 if bit at idx is full, returns 0 if bit is empty
-def get_bit(idx) : # idx is the index of the bit we want in memory
+def get_bit(idx) : # idx is the index of the bit we want in memory (which represents a page)
     byte_idx = idx >> 3 # byte idx is the index of the byte we want in memory (when memory is split into bytes) (idx/8)
     bit_idx = 7 - (idx - (byte_idx<<3)) # 7 - (idx%8)
     if byte_idx > N_PAGES-1: # exit if out of range
@@ -53,7 +53,7 @@ def mask_set(bit_idx):
 
 def clear_bit(idx) :
     byte_idx = idx >> 3
-    bit_idx = 7 - idx + (byte_idx<<3)
+    bit_idx = 7 - idx + (byte_idx<<3) # 7 - (idx%8)
     byte = bitmap[byte_idx]
     # mask = 0xFF ^ (1 << bit_idx) # 1110111
     bitmap[byte_idx] = byte & mask_clear(bit_idx)
@@ -63,12 +63,12 @@ def mask_clear(bit_idx):
 
 # allocation size is in pages
 def alloc_sz_is_free_at_idx(idx, alloc_sz) :
-    for jj in range(alloc_sz) : 
-        if(idx+jj>N_PAGES-1):
+    for jj in range(alloc_sz) : # for page 
+        if(idx+jj>N_PAGES-1): # surely less efficient than if idx+alloc_sz > n_pages-1?
             return 0 
-        if (get_bit(idx+jj)==1):
+        if (get_bit(idx+jj)==1): # if bit is allocated 
             return 0 
-    return 1
+    return 1 # if in range and free then
 
 # allocation size is in pages
 def claim_alloc_sz_at_idx(idx, alloc_sz) : 
