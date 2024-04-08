@@ -104,7 +104,42 @@ BRK
 
 ( allocation size is in pages )
 @alloc_sz_is_free_at_idx ( idx alloc_sz -- 00 or 01 )
-!todo
+
+    ( if out of range return 0 )
+    ADD2k N_PAGES #0001 SUB2 ( idx, alloc_sz, idx+alloc_sz, N_PAGES-1 )
+    GTH2 ( idx, alloc_sz, result ) 
+    ,&out-of-range JCN ( idx, alloc_sz )
+
+    ( if any bits in the alloc range are taken return 0 )
+    #0000 ( idx, alloc_sz, counter )
+    &loop
+        LTH2k ,&free JCN ( if alloc_sz < counter finish loop  )
+
+        ( if bit at idx+counter is allocated return 0 )
+        ROT2 ( alloc_sz, counter, idx )
+        ADD2k (alloc_sz, counter, idx, counter+idx )
+        get_bit #01 EQU (alloc_sz, counter, idx, bit==1 )
+        ,&not-free JCN ( alloc_sz, counter, idx )
+
+        ( prepare for next iteration )
+        ROT2 ( counter, idx, alloc_sz )
+        ROT2 ( idx, alloc_sz, counter )
+        INC2
+        ,&loop JMP
+
+    &out-of-range
+        POP2 POP2 ( clear stack )
+        #00 JMP2r ( return 0 )
+
+    &not-free
+        POP2 POP2 POP2
+        #00 JMP2r
+
+    &free
+        POP2 POP2 POP2 ( clear stack )
+        #01 JMP2r
+
+    
 
 @claim_alloc_sz_at_idx ( idx alloc_sz ) 
 !todo
