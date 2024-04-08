@@ -5,3 +5,4 @@ dynamic-memory-alloc-unit-tests.rom.sym
 single-func-tests.tal
 single-func-tests.rom
 single-func-tests.rom.sym
+dynamic-mem-env.code-workspace
