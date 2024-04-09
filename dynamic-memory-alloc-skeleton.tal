@@ -197,7 +197,23 @@ BRK
         JMP2r
 
 @free_alloc_sz_at_idx ( idx alloc_sz ) 
-!todo
+#0000 ( idx, alloc_sz, counter )
+    &loop
+        ( if alloc_sz is less than counter end )
+        EQU2k ,&end JCN ( idx, alloc_sz, counter )
+        ROT2 ( alloc_sz, counter, idx )
+
+        ( claim bit at bitmap[idx+counter] )
+        ADD2k ( alloc_sz, counter, idx, counter+idx )
+        clear_bit ( alloc_sz, counter, idx )
+        ROT2 ( counter, idx, alloc_sz )
+        ROT2 ( idx, alloc_sz, counter )
+
+        ( increment counter and loop )
+        INC2
+        ,&loop JMP
+    &end
+        JMP2r
 
 ( ==================================================== )
 ( Functions for printing )
