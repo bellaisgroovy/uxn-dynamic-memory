@@ -185,6 +185,42 @@ JMP2r
     #007c #0010 alloc_sz_is_free_at_idx print-bit nl
     #006c #0010 alloc_sz_is_free_at_idx print-bit nl
 JMP2r
+
+@test-free ( -- )
+    { 000e "Test 20 "for 20 "free 0a } STH2r print-str
+
+    ( claim first bit in memory )
+    #0000 #0001 ( idx, alloc_sz ) claim_alloc_sz_at_idx ( TODO doesnt work claim the first 8 bits )
+    ( print 0 if first bit is are claimed )
+    #0000 #0001 alloc_sz_is_free_at_idx print-bit ws
+
+    ( free first 16 bytes in memory to clear the first bit in the bitmap )
+    DMEM_START #0001 free ( free the first bit )
+    ( print 1 if first 8 bit is free )
+    #0000 #0001 alloc_sz_is_free_at_idx print-bit nl
+
+
+    ( claim bit 3 and 4 in memory ) ( remember count from 0 )
+    #0003 #0002 ( idx, alloc_sz ) claim_alloc_sz_at_idx ( TODO doesnt work claim the first 8 bits )
+    ( print 0 if bits are claimed )
+    #0003 #0002 alloc_sz_is_free_at_idx print-bit ws
+
+    ( free bytes 48 to 80 in memory to clear the first bit in the bitmap )
+    DMEM_START #0030 ADD2 #0020 free ( free the first bit )
+    ( print 1 if bits are free )
+    #0003 #0002 alloc_sz_is_free_at_idx print-bit nl
+
+    ( claim bit 12 to 19 in memory ) ( remember count from 0 )
+    #000c #0008 ( idx, alloc_sz ) claim_alloc_sz_at_idx ( TODO doesnt work claim the first 8 bits )
+    ( print 0 if bits are is are claimed )
+    #000c #0008 alloc_sz_is_free_at_idx print-bit ws
+
+    ( free bytes 48 to 80 in memory to clear the first bit in the bitmap )
+    DMEM_START #00c0 ADD2 #0080 free ( free the first bit )
+    ( print 1 if  bits are free )
+    #000c #0008 alloc_sz_is_free_at_idx print-bit nl
+JMP2r
+
 ( ==================================================== )
 
 ( All subroutines to be tested go here )
@@ -291,7 +327,7 @@ as a decimal number of 5 digits )
 
 ( To print a string )
 ( The string starts with a 2-byte lenght field )
-@print-str ( a* -: )
+@print-str ( str* -: )
     LDA2k ( ;str size )
     SWP2 #0002 ADD2 SWP2 ( ;str+2 size )
     DUP2 ( ;str+2 size size )
