@@ -25,8 +25,8 @@ BRK
 @malloc ( n_bytes -- <allocation in bytes> )
 !todo
 
-@free ( ptr n_bytes )
-    SWP2 #f000 SUB2 PAGE_SZ DIV2
+@free ( ptr n_bytes --  )
+    SWP2 DMEM_START SUB2 PAGE_SZ DIV2
     ;free_alloc_sz_at_idx JMP2
 
 @get_bit ( idx -- bit ) ( wait can i just do ;bitmap ADD2 LDA?? )
