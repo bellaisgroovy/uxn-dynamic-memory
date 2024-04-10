@@ -149,7 +149,7 @@ BRK
     ( if any bits in the alloc range are taken return 0 )
     #0000 ( idx, alloc_sz, counter )
     &loop
-        LTH2k ,&free JCN ( if alloc_sz < counter finish loop  )
+        EQU2k ,&free JCN ( if alloc_sz < counter finish loop  )
 
         ( if bit at idx+counter is allocated return 0 )
         ROT2 ( alloc_sz, counter, idx )
