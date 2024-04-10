@@ -221,6 +221,65 @@ JMP2r
     #000c #0008 alloc_sz_is_free_at_idx print-bit nl
 JMP2r
 
+@clear-bitmap
+    ;bitmap ( &bitmap )
+    N_PAGES ( &bitmap, n_pages )
+    #0000 ( &bitmap, n_pages, page_idx )
+    &loop
+        ( if page_idx == n_pages stop )
+        EQU2k ,&done JCN ( &bitmap, n_pages, page_idx )
+        
+        ( clear page )
+        ROT2 ( n_pages, page_idx, &bitmap )
+        ADD2k ( n_pages, page_idx, &bitmap, &bitmap[page_idx] )
+        #00 ROT ROT ( n_pages, page_idx, &bitmap, 00,  &bitmap[page_idx] )
+        STA ( n_pages, page_idx, &bitmap )
+
+        ( increment counter and loop )
+        ROT2 ROT2 ( &bitmap, n_pages, page_idx )
+        INC2 ( &bitmap, n_pages, page_idx+1 )
+        ,&loop JMP
+    &done
+        POP2 POP2 POP2
+        JMP2r
+
+@print-bitmap
+    N_PAGES #0001 SUB2 ( n_pages )
+    #0000 ( n_pages, page_idx )
+    &loop
+        ( if page_idx == n_pages stop )
+        EQU2k ,&done JCN ( n_pages, page_idx )
+        
+        ( print page )
+        DUP2 get_bit print-bit ( n_pages, page_idx )
+
+        INC2 ( n_pages, page_idx+1 )
+        ,&loop JMP
+    &done
+        POP2 POP2
+        JMP2r
+
+@test-malloc
+    { 0010 "Test 20 "for 20 "malloc 0a } STH2r print-str
+    ( clear bitmap )
+    clear-bitmap 
+
+    ( allocate 16 bytes )
+    #0010 malloc ( addr )
+
+    ( if bit 1 is claimed print 1 )
+    #0000 #0001 alloc_sz_is_free_at_idx #00 EQU print-bit nl
+
+    ( allocate 16 bytes )
+    #0010 malloc ( addr )
+
+    ( if bit 2 is claimed print 1 )
+    #0001 #0001 alloc_sz_is_free_at_idx #00 EQU print-bit nl
+
+    print-bitmap
+
+    JMP2r
+
 ( ==================================================== )
 
 ( All subroutines to be tested go here )
