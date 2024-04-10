@@ -194,6 +194,7 @@ BRK
         INC2
         ,&loop JMP
     &end
+        POP2 POP2 POP2 ( clears stack )
         JMP2r
 
 @free_alloc_sz_at_idx ( idx alloc_sz ) 
@@ -203,7 +204,7 @@ BRK
         EQU2k ,&end JCN ( idx, alloc_sz, counter )
         ROT2 ( alloc_sz, counter, idx )
 
-        ( claim bit at bitmap[idx+counter] )
+        ( free bit at bitmap[idx+counter] )
         ADD2k ( alloc_sz, counter, idx, counter+idx )
         clear_bit ( alloc_sz, counter, idx )
         ROT2 ( counter, idx, alloc_sz )
@@ -213,6 +214,7 @@ BRK
         INC2
         ,&loop JMP
     &end
+        POP2 POP2 POP2 ( clears stack )
         JMP2r
 
 ( ==================================================== )
