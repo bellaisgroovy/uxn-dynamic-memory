@@ -24,46 +24,47 @@ BRK
 ( definitions of malloc, free and functions used to implement them )
 @malloc ( n_bytes -- <allocation in bytes> )
     ( if n_bytes is 0 return null )
-    DUP2 #0000 ( n_bytes, n_bytes, 0000 )
-    EQU2 ,&return-null JCN ( n_bytes )
+    DUP2 #0000 EQU2 ,&return-null JCN ( n_bytes )
 
-    ( get n_pages )
-    #0001 SUB2 PAGE_SZ DIV2 #0001 ADD2 ( n_pages )
+    ( get alloc_sz )
+    #0001 SUB2 ( n_bytes-1 )
+    PAGE_SZ DIV2 ( n_bytes-1/page_sz )
+    #0001 ADD2 ( alloc_sz )
 
-    ( claim a contiguous space of n_page or return null )
-    #0000 ( n_pages, idx )
+    ( loop in range alloc_sz )
+    N_PAGES
+    #0000 ( alloc_sz, N_PAGES, idx )
     &loop
 
-        ( if counter == n_pages, return null )
-        EQU2k ,&return-null JCN ( n_pages, idx )
+        ( if loop ran alloc_sz times return null )
+        EQU2k ,&return-null-loop JCN ( alloc_sz, N_PAGES, idx )
 
-        ( if n_pages are free at idx claim them )
-        DUP2 ( n_pages, idx, idx )
-        ROT2 ( idx, idx, n_pages )
-        DUP2 ( idx, idx, n_pages, n_pages )
-        ROT2 ( idx, n_pages, n_pages, idx )
-        SWP2 ( idx, n_pages, idx, n_pages )
-        alloc_sz_is_free_at_idx ,&claim JCN ( idx, n_pages )
-        
-        ( otherwise increment idx and loop )
-        SWP2 ( n_pages , idx )
-        INC2 ( n_pages, idx+1 )
+        ( if alloc sz is free then claim it )
+        ROT2 (  N_PAGES, idx, alloc_sz )
+        OVR2 OVR2 (  N_PAGES, idx, alloc_sz, idx, alloc_sz )
+        alloc_sz_is_free_at_idx ,&claim JCN (  N_PAGES, idx, alloc_sz )
+
+        ( else loop )
+        ROT2 ( idx, alloc_sz, N_PAGES )
+        ROT2 ( alloc_sz, N_PAGES, idx )
+        INC2 ( alloc_sz, N_PAGES, idx+1 )
         ,&loop JMP
 
-    &claim ( idx, n_pages )
-        ( claim space )
-        SWP2 ( n_pages, idx )
-        DUP2 ( n_pages, idx, idx )
-        ROT2 ( idx, idx, n_pages )
-        claim_alloc_sz_at_idx ( idx )
-        
-        ( return pointer to that space )
-        PAGE_SZ MUL2 ( idx*page_sz )
-        DMEM_START ADD2 ( idx*page_sz+dmem_start )
+    &return-null-loop
+        POP2
+        POP2
+    &return-null
+        POP2 ( clear stack )
+        #0000 ( return null )
         JMP2r
 
-    &return-null
-        #0000 JMP2r
+    &claim (  N_PAGES, idx, alloc_sz )
+        ROT2 POP2 ( idx, alloc_sz )
+        OVR2 (  idx, alloc_sz, idx )
+        SWP2 (  idx, idx, alloc_sz )
+        claim_alloc_sz_at_idx ( idx )
+        PAGE_SZ MUL2 DMEM_START ADD2 ( idx*page_sz+dmem_start )
+        JMP2r
 
 ( points to a byte in memory, and the number of bytes from there to claim )
 ( one bit in the bitmap represents a 16 byte page in memory )

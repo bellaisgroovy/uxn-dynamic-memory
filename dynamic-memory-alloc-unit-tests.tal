@@ -266,15 +266,20 @@ JMP2r
 
     ( allocate 16 bytes )
     #0010 malloc ( addr )
-
     ( if bit 1 is claimed print 1 )
     #0000 #0001 alloc_sz_is_free_at_idx #00 EQU print-bit nl
 
+
     ( allocate 16 bytes )
     #0010 malloc ( addr )
-
     ( if bit 2 is claimed print 1 )
     #0001 #0001 alloc_sz_is_free_at_idx #00 EQU print-bit nl
+
+
+    ( try to claim too big a space )  
+    #0fe0 malloc 
+    ( print 1 if failed )
+    #0000 EQU2 print-bit nl
 
     print-bitmap
 
