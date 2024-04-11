@@ -20,6 +20,8 @@
     test-alloc_sz_is_free_at_idx
     test-claim_alloc_sz_at_idx
     test-free_alloc_sz_at_idx
+    test-free
+    test-malloc
 BRK
 
 ( All unit tests )
@@ -288,6 +290,244 @@ JMP2r
 ( ==================================================== )
 
 ( All subroutines to be tested go here )
+
+@malloc ( n_bytes -- <allocation in bytes> )
+    ( if n_bytes is 0 return null )
+    DUP2 #0000 EQU2 ,&return-null JCN ( n_bytes )
+
+    ( get alloc_sz )
+    #0001 SUB2 ( n_bytes-1 )
+    PAGE_SZ DIV2 ( n_bytes-1/page_sz )
+    #0001 ADD2 ( alloc_sz )
+
+    ( loop in range alloc_sz )
+    N_PAGES
+    #0000 ( alloc_sz, N_PAGES, idx )
+    &loop
+
+        ( if loop ran alloc_sz times return null )
+        EQU2k ,&return-null-loop JCN ( alloc_sz, N_PAGES, idx )
+
+        ( if alloc sz is free then claim it )
+        ROT2 (  N_PAGES, idx, alloc_sz )
+        OVR2 OVR2 (  N_PAGES, idx, alloc_sz, idx, alloc_sz )
+        alloc_sz_is_free_at_idx ,&claim JCN (  N_PAGES, idx, alloc_sz )
+
+        ( else loop )
+        ROT2 ( idx, alloc_sz, N_PAGES )
+        ROT2 ( alloc_sz, N_PAGES, idx )
+        INC2 ( alloc_sz, N_PAGES, idx+1 )
+        ,&loop JMP
+
+    &return-null-loop
+        POP2
+        POP2
+    &return-null
+        POP2 ( clear stack )
+        #0000 ( return null )
+        JMP2r
+
+    &claim (  N_PAGES, idx, alloc_sz )
+        ROT2 POP2 ( idx, alloc_sz )
+        OVR2 (  idx, alloc_sz, idx )
+        SWP2 (  idx, idx, alloc_sz )
+        claim_alloc_sz_at_idx ( idx )
+        PAGE_SZ MUL2 DMEM_START ADD2 ( idx*page_sz+dmem_start )
+        JMP2r
+
+( points to a byte in memory, and the number of bytes from there to claim )
+( one bit in the bitmap represents a 16 byte page in memory )
+@free ( ptr n_bytes )
+    SWP2 #f000 SUB2 PAGE_SZ DIV2 ( n_bytes idx )
+    SWP2 ( idx n_bytes )
+    #0001 SUB2 PAGE_SZ DIV2 #0001 ADD2 ( bytes to pages; idx n_pages )
+    ;free_alloc_sz_at_idx JMP2
+
+@get_bit ( idx -- bit ) ( wait can i just do ;bitmap ADD2 LDA?? )
+    ( get idx % 8 )
+    DUP2 DUP2 ( idx, idx, idx )
+    #03 SFT2 #30 SFT2 ( idx, idx, idx rounded to the nearest 8 )
+    SUB2 ( idx, idx%8 )
+
+    ( take away index of the bit from 7 )
+    #0007 SWP2 SUB2 ( idx, bit_idx )
+    SWP2 ( bit_idx, idx )
+
+    ( if index is too big exit )
+    #03 SFT2 ( bit_idx, byte_idx )
+    N_PAGES #0001 SUB2 ( bit_idx, byte_idx, n_pages-1 )
+    GTH2k ( bit_idx, byte_idx, n_pages-1, byte_idx>n_pages-1 )
+    ,&invalid JCN POP2 ( bit_idx, byte_idx )
+
+    ( get bitmap[byte_idx] )
+    ;bitmap ADD2 LDA ( bit_idx, *bitmap[byte_idx] )
+
+    ( get value of bit at idx finally )
+    ( bit_idx, byte )
+    ROT ( bit_idx_low, byte, bit_idx_high )
+    POP ( bit_idx_low, byte )
+    SWP ( byte, bit_idx_low )
+    SFT ( byte>>bit_idx )
+    #01 AND ( bit )
+    JMP2r
+    
+    &invalid
+        { 0016 "Outside 20 "of 20 "page 20 "range 0a } STH2r print-str
+        BRK
+
+
+@set_bit ( idx -- )
+    ( byte_idx = idx >> 3 )
+    DUP2 ( idx, idx )
+    #03 SFT2 ( idx, byte_idx )
+
+    ( bit_idx = 7 - {idx - {byte_idx<<3}} )
+    DUP2 ( idx, byte_idx, byte_idx )
+    #30 SFT ( idx, byte_idx, byte_idx>><<3 )
+    ROT2 ( byte_idx, byte_idx>><<3, idx )
+    ADD2 ( byte_idx, idx+byte_idx>><<3 )
+    #0007 SWP2 ( byte_idx, 0070, idx+byte_idx>><<3 )
+    SUB2 ( byte_idx, bit_idx )
+
+    ( byte = bitmap[byte_idx] )
+    SWP2 ( bit_idx, byte_idx )
+    ;bitmap ( bit_idx, byte_idx, &bitmap )
+    ADD2 ( bit_idx, &bitmap[byte_idx] )
+    
+    ( bitmap[byte_idx] = byte | mask_set{bit_idx} )
+    DUP2 ROT2 SWP2 (  &bitmap[byte_idx], bit_idx, &bitmap[byte_idx] )
+    LDA (  &bitmap[byte_idx], bit_idx, *bitmap[byte_idx] )
+    ROT ROT ( &bitmap[byte_idx], *bitmap[byte_idx], bit_idx )
+    mask_set ( &bitmap[byte_idx], *bitmap[byte_idx], mask )
+    ORA ( &bitmap[byte_idx], byteMasked )
+    ROT ROT ( byteMasked, &bitmap[byte_idx] )
+    STA ( -- )
+    JMP2r
+
+@mask_set ( idx16 ) ( returns mask with bit idx spaces left as 1 and the rest 0 )
+    SWP POP ( makes idx byte instead of short ) ( idx8 ) ( is this def right? )
+    #40 SFT ( moves low nibble of idx to high nibble ) ( idx8<<4 )
+    #01 SWP SFT ( moves 1 in 0000 0001 left by value of idx ) ( 1<<idx8<<4 )
+    JMP2r
+
+@clear_bit ( idx -- )
+    ( get idx % 8 )
+    DUP2 DUP2 ( idx, idx, idx )
+    #03 SFT2 #30 SFT2 ( idx, idx, idx rounded to the nearest 8 )
+    SUB2 ( idx, idx%8 )
+
+    ( take away index of the bit from 7 )
+    #0007 SWP2 SUB2 ( idx, bit_idx )
+
+    ( get mask )
+    mask_clear ( idx, mask )
+    ROT ROT ( mask, idx )
+
+    ( get byte )
+    #03 SFT2 ( mask, byte_idx )
+    ;bitmap ADD2 ( mask, &bitmap[byte_idx] )
+    LDAk ( mask, &bitmap[byte_idx], byte )
+    ROT ROT ( mask, byte, &bitmap[byte_idx] )
+    SWP2 ( &bitmap[byte_idx], mask, byte )
+
+    ( apply mask )
+    AND (&bitmap[byte_idx], mask&byte )
+
+    ( store result )
+    ROT ROT ( mask&byte, &bitmap[byte_idx] )
+    STA ( -- )
+
+    JMP2r
+
+@mask_clear ( bit_idx -- 0xFF ^ {1 << bit_idx} )
+    ( shift 1 to the left by bit_idx )
+    SWP POP ( make bit_idx a byte )
+    #01 SWP ( 01, bit_idx )
+    #40 SFT ( move content of bit_idx to left nibble ) ( 01, bit_idx00 )
+    SFT ( 1 << bit_idx )
+
+    ( flip all the bits )
+    #ff
+    EOR
+    
+    JMP2r
+
+( allocation size is in pages )
+@alloc_sz_is_free_at_idx ( idx alloc_sz -- 00 or 01 )
+
+    ( if out of range return 0 )
+    ADD2k N_PAGES #0001 SUB2 ( idx, alloc_sz, idx+alloc_sz, N_PAGES-1 )
+    GTH2 ( idx, alloc_sz, result ) 
+    ,&out-of-range JCN ( idx, alloc_sz )
+
+    ( if any bits in the alloc range are taken return 0 )
+    #0000 ( idx, alloc_sz, counter )
+    &loop
+        EQU2k ,&free JCN ( if alloc_sz < counter finish loop  )
+
+        ( if bit at idx+counter is allocated return 0 )
+        ROT2 ( alloc_sz, counter, idx )
+        ADD2k (alloc_sz, counter, idx, counter+idx )
+        get_bit #01 EQU (alloc_sz, counter, idx, bit==1 )
+        ,&not-free JCN ( alloc_sz, counter, idx )
+
+        ( prepare for next iteration )
+        ROT2 ( counter, idx, alloc_sz )
+        ROT2 ( idx, alloc_sz, counter )
+        INC2
+        ,&loop JMP
+
+    &out-of-range
+        POP2 POP2 ( clear stack )
+        #00 JMP2r ( return 0 )
+
+    &not-free
+        POP2 POP2 POP2
+        #00 JMP2r
+
+    &free
+        POP2 POP2 POP2 ( clear stack )
+        #01 JMP2r
+    
+@claim_alloc_sz_at_idx ( idx alloc_sz )
+    #0000 ( idx, alloc_sz, counter )
+    &loop
+        ( if alloc_sz is less than counter end )
+        EQU2k ,&end JCN ( idx, alloc_sz, counter )
+        ROT2 ( alloc_sz, counter, idx )
+
+        ( claim bit at bitmap[idx+counter] )
+        ADD2k ( alloc_sz, counter, idx, counter+idx )
+        set_bit ( alloc_sz, counter, idx )
+        ROT2 ( counter, idx, alloc_sz )
+        ROT2 ( idx, alloc_sz, counter )
+
+        ( increment counter and loop )
+        INC2
+        ,&loop JMP
+    &end
+        POP2 POP2 POP2 ( clears stack )
+        JMP2r
+
+@free_alloc_sz_at_idx ( idx alloc_sz ) 
+#0000 ( idx, alloc_sz, counter )
+    &loop
+        ( if alloc_sz is less than counter end )
+        EQU2k ,&end JCN ( idx, alloc_sz, counter )
+        ROT2 ( alloc_sz, counter, idx )
+
+        ( free bit at bitmap[idx+counter] )
+        ADD2k ( alloc_sz, counter, idx, counter+idx )
+        clear_bit ( alloc_sz, counter, idx )
+        ROT2 ( counter, idx, alloc_sz )
+        ROT2 ( idx, alloc_sz, counter )
+
+        ( increment counter and loop )
+        INC2
+        ,&loop JMP
+    &end
+        POP2 POP2 POP2 ( clears stack )
+        JMP2r
 
 ( ==================================================== )
 ( Functions for printing )
