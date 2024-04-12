@@ -14,12 +14,86 @@
 ( zero page, used for temporary storage )
 
 |0100
-(
-Run your integration tests here
-)
+    (
+    Run your integration tests here
+    )
+
+    ( "if malloc requests n bytes and there is enough contiguous memory
+    to claim, returns the pointer to the start of this memory area" )
+    enough-memory-claim nl
+
+    ( "if malloc requests n bytes and there is not enough contiguous memory
+    to claim, returns 0" )
+    not-enough-memory-claim nl
+
+    ( "if free takes a valid pointer {i.e. returned by a succesful malloc} and
+    the corresponding size, the corresponding contiguous memory area
+    will be deallocated" )
+    valid-free-from-malloc nl
+
+    ( "if free takes an invalid pointer {i.e. from a succesful malloc}, the
+    behaviour is undefined and does not need to be verified.
+
+    If free takes a valid pointer but incorrect size, the behaviour is
+    undefined and does not need to be verified" )
+
+    ( "allocation and deallocation should work correctly for any size between
+    1 and PAGE_SZ*N_PAGES-1 bytes" )
+    test-page-size-range print-bit nl
 BRK
 
 ( define your integration tests here )
+
+@enough-memory-claim
+    #0010 malloc ( ptr )
+    DUP2 print16 nl
+    #0010 free
+    JMP2r
+
+@not-enough-memory-claim
+    #ffff malloc ( ptr )
+    print16 nl
+    JMP2r
+
+@valid-free-from-malloc
+    #0050 malloc ( ptr )
+    print-bitmap
+    #0050 free ( -- )
+    print-bitmap
+    JMP2r
+
+( tries to claim and free every integer of pages between 1 and PAGESZ*{N_PAGES-1} )
+( returns 1 if it works and 0 if it doesn't )
+@test-page-size-range
+    ( loop in range PAGE_SZ*N_PAGES-1 )
+    N_PAGES #0001 SUB2 PAGE_SZ MUL2 ( PAGESZ*{N_PAGES-1} )
+    #0001 ( PAGESZ*N_PAGES-1, mem_sz )
+    &loop
+        ( if mem_z > PAGESZ*N_PAGES-1 then pass )
+        LTH2k ,&pass JCN ( PAGESZ*N_PAGES-1, mem_sz )
+        ( claim space of mem_sz )
+        DUP2 malloc ( PAGESZ*N_PAGES-1, mem_sz, ptr )
+
+        ( if returned 0 fail )
+        DUP2 ( PAGESZ*N_PAGES-1, mem_sz, ptr, ptr )
+        #0000 EQU2 ,&fail JCN ( PAGESZ*N_PAGES-1, mem_sz, ptr )
+
+        ( free space at ptr returned by mem_sz )
+        OVR2 ( PAGESZ*N_PAGES-1, mem_sz, ptr, mem_sz )
+        free ( PAGESZ*N_PAGES-1, mem_sz )
+
+        ( loop )
+        INC2 ,&loop JMP
+    &fail
+        #010e DEO
+        POP2 POP2 POP2
+        #00 JMP2r
+    &pass
+        POP2 POP2
+        #01 JMP2r
+
+
+
 
 ( definitions of malloc, free and functions used to implement them )
 @malloc ( n_bytes -- <allocation in bytes> )
@@ -378,6 +452,23 @@ JMP2r
     &exit
     POP2 POP2 POP2
 JMP2r
+
+@print-bitmap
+    N_PAGES #0001 SUB2 ( n_pages )
+    #0000 ( n_pages, page_idx )
+    &loop
+        ( if page_idx == n_pages stop )
+        EQU2k ,&done JCN ( n_pages, page_idx )
+        
+        ( print page )
+        DUP2 get_bit print-bit ( n_pages, page_idx )
+
+        INC2 ( n_pages, page_idx+1 )
+        ,&loop JMP
+    &done
+        POP2 POP2
+        nl
+        JMP2r
 
 ( example strings )
 @invalid-str 000f "Invalid 20 "access:
