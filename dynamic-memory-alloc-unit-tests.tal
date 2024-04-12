@@ -282,9 +282,6 @@ JMP2r
     #0fe0 malloc 
     ( print 1 if failed )
     #0000 EQU2 print-bit nl
-
-    print-bitmap
-
     JMP2r
 
 ( ==================================================== )

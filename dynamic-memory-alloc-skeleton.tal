@@ -1,13 +1,18 @@
-( This is the suggested code skeleton for AE1
-  it also provides helper functions for printing
-
-  Replace `!todo` with your implementation for each function, 
-  based on the Python reference
-
-)
-
 (
- Dynamic memory allocation using pages and a bitmap
+    name : Bellatrix Hodgson
+    guid : 2770706h
+
+    description:
+    Dynamic memory allocation using pages and a bitmap.
+
+    Uses a bitmap to represent if pages of memory are claimed or not. Allows
+    user to claim a space by specifying the number of bytes they wish to store
+    and calling malloc. Allows user to unclaim spaces by specifying where they 
+    would like to free up space and the number of bytes they wish to unclaim.
+
+    usage:
+    no_bytes malloc -> claims and returns address claimed
+    pointer no_bytes free -> frees bytes at pointer
 )
 
 |0000
@@ -15,7 +20,7 @@
 
 |0100
     (
-    Run your integration tests here
+    Integration tests
     )
 
     ( "if malloc requests n bytes and there is enough contiguous memory
@@ -42,7 +47,7 @@
     test-page-size-range print-bit nl
 BRK
 
-( define your integration tests here )
+( definition of integration tests )
 
 @enough-memory-claim
     #0010 malloc ( ptr )
@@ -96,6 +101,7 @@ BRK
 
 
 ( definitions of malloc, free and functions used to implement them )
+
 @malloc ( n_bytes -- <allocation in bytes> )
     ( if n_bytes is 0 return null )
     DUP2 #0000 EQU2 ,&return-null JCN ( n_bytes )
